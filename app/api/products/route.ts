@@ -3,7 +3,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/admin";
 
 export async function GET() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
+
   const { data, error } = await supabase
     .from("products")
     .select("*")
@@ -14,7 +15,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   if (!(await isAdmin(supabase))) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const body = await req.json().catch(() => null);
@@ -35,14 +36,14 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   if (!(await isAdmin(supabase))) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const body = await req.json().catch(() => null);
   const id = body?.id;
   if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
-  const patch: any = {};
+  const patch: Record<string, any> = {};
   if (body.name != null) patch.name = String(body.name);
   if (body.price != null) patch.price = Number(body.price);
   if (body.category != null) patch.category = String(body.category);
@@ -56,14 +57,14 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   if (!(await isAdmin(supabase))) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const url = new URL(req.url);
   const id = url.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
 
-  const { error } = await supabase.from("products").delete().eq("id", Number(id));
+  const { error } = await supabase.from("products").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

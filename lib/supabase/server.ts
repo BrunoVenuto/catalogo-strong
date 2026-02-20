@@ -1,8 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-export function createSupabaseServerClient() {
-  const cookieStore = cookies();
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies(); // ✅ agora é async
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,15 +10,16 @@ export function createSupabaseServerClient() {
     {
       cookies: {
         getAll() {
+          // ✅ Next CookieStore: getAll() existe quando você usa await cookies()
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
           try {
-            for (const { name, value, options } of cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options);
-            }
+            });
           } catch {
-            // In Server Components, setting cookies throws. That's ok — it will be handled in middleware/route handlers.
+            // em server components, pode falhar; em route handler normalmente ok
           }
         },
       },
