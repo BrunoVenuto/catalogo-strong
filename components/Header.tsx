@@ -126,7 +126,7 @@ export default function Header() {
                 >
                   <div className="relative h-10 w-10 shrink-0 rounded-xl overflow-hidden ring-1 ring-white/10 bg-white/5">
                     <Image
-                      src="/logo.jpeg"
+                      src="/images/logo.jpeg"
                       alt={`${siteConfig.name} logo`}
                       fill
                       className="object-cover"
