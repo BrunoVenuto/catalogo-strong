@@ -1,12 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function AdminLoginPage() {
+export const dynamic = "force-dynamic";
+
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = useMemo(() => searchParams.get("next") || "/admin", [searchParams]);
+
+  const next = useMemo(() => {
+    const value = searchParams.get("next");
+    if (!value) return "/admin";
+    if (!value.startsWith("/")) return "/admin";
+    return value;
+  }, [searchParams]);
 
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,6 +24,7 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
     try {
       const res = await fetch("/api/admin/login", {
         method: "POST",
@@ -64,7 +73,8 @@ export default function AdminLoginPage() {
               <p className="text-sm text-red-300">{error}</p>
             ) : (
               <p className="text-xs text-zinc-400">
-                Dica: você pode definir a senha via <code className="text-zinc-200">ADMIN_PASSWORD</code>.
+                Dica: você pode definir a senha via{" "}
+                <code className="text-zinc-200">ADMIN_PASSWORD</code>.
               </p>
             )}
 
@@ -83,5 +93,13 @@ export default function AdminLoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center">Carregando...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
