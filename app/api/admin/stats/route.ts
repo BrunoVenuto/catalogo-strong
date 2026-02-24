@@ -6,16 +6,85 @@ export async function GET() {
   const supabase = await createSupabaseServerClient();
   if (!(await isAdmin(supabase))) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  const [{ count: productsCount, error: e1 }, { count: ordersCount, error: e2 }] = await Promise.all([
-    supabase.from("products").select("*", { count: "exact", head: true }),
-    supabase.from("orders").select("*", { count: "exact", head: true }),
-  ]);
+  // 1. Total orders
+  const { count: totalOrders } = await supabase
+    .from("orders")
+    .select("*", { count: "exact", head: true });
 
-  if (e1) return NextResponse.json({ error: e1.message }, { status: 500 });
-  if (e2) return NextResponse.json({ error: e2.message }, { status: 500 });
+  // 2. Fetch all order items for revenue and top products
+  const { data: allItems } = await supabase
+    .from("order_items")
+    .select(`
+      product_id,
+      price,
+      quantity,
+      products ( name )
+    `);
+
+  let totalRevenue = 0;
+  const productStats: Record<string, { name: string; quantity: number; revenue: number }> = {};
+
+  if (allItems) {
+    for (const item of allItems) {
+      const lineTotal = item.price * item.quantity;
+      totalRevenue += lineTotal;
+      
+      const pId = item.product_id;
+      const pName = (item.products as any)?.name || "Produto Desconhecido";
+      
+      if (!productStats[pId]) {
+        productStats[pId] = { name: pName, quantity: 0, revenue: 0 };
+      }
+      productStats[pId].quantity += item.quantity;
+      productStats[pId].revenue += lineTotal;
+    }
+  }
+
+  const topProducts = Object.entries(productStats)
+    .map(([productId, stats]) => ({
+      productId,
+      ...stats
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5);
+
+  // 3. Last 5 orders
+  const { data: lastOrdersData } = await supabase
+    .from("orders")
+    .select(`
+      id,
+      created_at,
+      order_items (
+        quantity,
+        price,
+        products ( name )
+      )
+    `)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  const lastOrders = (lastOrdersData || []).map(order => {
+    let total = 0;
+    const items = (order.order_items || []).map((it: any) => {
+      total += it.price * it.quantity;
+      return {
+        name: it.products?.name || "Produto Desconhecido",
+        quantity: it.quantity
+      };
+    });
+
+    return {
+      id: order.id,
+      createdAt: order.created_at,
+      total,
+      items
+    };
+  });
 
   return NextResponse.json({
-    productsCount: productsCount ?? 0,
-    ordersCount: ordersCount ?? 0,
+    totalOrders: totalOrders ?? 0,
+    totalRevenue,
+    topProducts,
+    lastOrders,
   });
 }
