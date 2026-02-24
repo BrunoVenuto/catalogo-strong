@@ -18,8 +18,24 @@ export default async function AdminPage() {
   const proto = process.env.NODE_ENV === "development" ? "http" : "https";
   const base = host ? `${proto}://${host}` : "";
 
-  const res = await fetch(`${base}/api/admin/stats`, { cache: "no-store" });
-  const stats = (await res.json()) as Stats;
+  const res = await fetch(`${base}/api/admin/stats`, {
+    cache: "no-store",
+    headers: {
+      cookie: h.toString() // forward all headers including cookies to the API route!
+    }
+  });
+
+  let stats: Stats;
+  if (res.ok) {
+    stats = (await res.json()) as Stats;
+  } else {
+    stats = {
+      totalOrders: 0,
+      totalRevenue: 0,
+      topProducts: [],
+      lastOrders: [],
+    };
+  }
 
   return (
     <main className="space-y-6">
