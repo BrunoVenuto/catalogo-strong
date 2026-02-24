@@ -1,5 +1,7 @@
+export const dynamic = "force-dynamic";
+
 import SeedButton from "./SeedButton";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createClient } from "@supabase/supabase-js";
 
 type Stats = {
   totalOrders: number;
@@ -13,7 +15,10 @@ function money(v: number) {
 }
 
 export default async function AdminPage() {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
   let stats: Stats = { totalOrders: 0, totalRevenue: 0, topProducts: [], lastOrders: [] };
 
   try {
