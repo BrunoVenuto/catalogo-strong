@@ -29,11 +29,22 @@ export default async function AdminPage() {
     const { data: allItems } = await supabase
       .from("order_items")
       .select(`
+        order_id,
         product_id,
         price,
-        quantity,
-        products ( name )
+        quantity
       `);
+
+    const { data: allProducts } = await supabase
+      .from("products")
+      .select("id, name");
+
+    const productNames = new Map<string, string>();
+    if (allProducts) {
+      for (const p of allProducts) {
+        productNames.set(String(p.id), p.name);
+      }
+    }
 
     let totalRevenue = 0;
     const productStats: Record<string, { name: string; quantity: number; revenue: number }> = {};
@@ -43,9 +54,8 @@ export default async function AdminPage() {
         const lineTotal = item.price * item.quantity;
         totalRevenue += lineTotal;
 
-        const pId = item.product_id;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const pName = (item.products as any)?.name || "Produto Desconhecido";
+        const pId = String(item.product_id);
+        const pName = productNames.get(pId) || "Produto Desconhecido";
 
         if (!productStats[pId]) {
           productStats[pId] = { name: pName, quantity: 0, revenue: 0 };
@@ -67,23 +77,20 @@ export default async function AdminPage() {
       .from("orders")
       .select(`
         id,
-        created_at,
-        order_items (
-          quantity,
-          price,
-          products ( name )
-        )
+        created_at
       `)
       .order("created_at", { ascending: false })
       .limit(5);
 
     const lastOrders = (lastOrdersData || []).map(order => {
       let total = 0;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const items = (order.order_items || []).map((it: any) => {
+
+      // Encontrar apenas os itens deste pedido em memória
+      const itemsOfThisOrder = (allItems || []).filter(it => String(it.order_id) === String(order.id));
+
+      const items = itemsOfThisOrder.map((it) => {
         total += it.price * it.quantity;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const name = (it.products as any)?.name || "Produto Desconhecido";
+        const name = productNames.get(String(it.product_id)) || "Produto Desconhecido";
         return {
           name,
           quantity: it.quantity
